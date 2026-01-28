@@ -3,19 +3,16 @@ import os
 import re
 import urllib.request
 
-MODRINTH_USER = os.getenv("MODRINTH_USER", "Gaboouu")
-CURSEFORGE_USER = os.getenv("CURSEFORGE_USER", "gaboouu")
+MODRINTH_USER = "Gaboouu"
+CURSEFORGE_USER = "gaboouu"
 
-def get_text(url: str, headers: dict | None = None) -> str:
-    req = urllib.request.Request(
-        url,
-        headers={"User-Agent": "downloads-badge-updater", **(headers or {})},
-    )
+def get_text(url: str) -> str:
+    req = urllib.request.Request(url, headers={"User-Agent": "downloads-badge-updater"})
     with urllib.request.urlopen(req, timeout=30) as r:
         return r.read().decode("utf-8", errors="replace")
 
-def get_json(url: str, headers: dict | None = None) -> object:
-    return json.loads(get_text(url, headers=headers))
+def get_json(url: str) -> object:
+    return json.loads(get_text(url))
 
 def patch_gist(gist_id: str, token: str, content: str) -> None:
     url = f"https://api.github.com/gists/{gist_id}"
@@ -46,22 +43,26 @@ def parse_compact_number(s: str) -> int:
 
 def get_modrinth_user_id(username_or_id: str) -> str:
     user = get_json(f"https://api.modrinth.com/v2/user/{username_or_id}")
-    user_id = (user or {}).get("id")
-    if not user_id:
+    uid = (user or {}).get("id")
+    if not uid:
         raise RuntimeError("Modrinth user id introuvable")
-    return user_id
+    return uid
 
 def get_modrinth_downloads(username_or_id: str) -> int:
-    user_id = get_modrinth_user_id(username_or_id)
-    projects = get_json(f"https://api.modrinth.com/v2/user/{user_id}/projects")
+    uid = get_modrinth_user_id(username_or_id)
+    projects = get_json(f"https://api.modrinth.com/v2/user/{uid}/projects")
     return sum(int(p.get("downloads", 0)) for p in projects)
 
 def get_curseforge_total_downloads_from_profile(username: str) -> int:
     html = get_text(f"https://www.curseforge.com/members/{username}/projects")
-    m = re.search(r"(\d+(?:\.\d+)?)\s*([KMB])?\s*Downloads", html, flags=re.IGNORECASE)
+    m = re.search(
+        r"\|\s*([0-9]+(?:\.[0-9]+)?)\s*([KMB])\s*Downloads",
+        html,
+        flags=re.IGNORECASE,
+    )
     if not m:
-        raise RuntimeError("Impossible de trouver le total Downloads sur la page CurseForge")
-    return parse_compact_number(m.group(1) + (m.group(2) or ""))
+        raise RuntimeError("Total CurseForge introuvable dans le HTML")
+    return parse_compact_number(m.group(1) + m.group(2))
 
 if __name__ == "__main__":
     gist_id = os.environ["GIST_ID"]
