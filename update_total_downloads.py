@@ -1,20 +1,21 @@
 import json
 import os
-import urllib.parse
+import re
 import urllib.request
 
-USER = "xGabou"
+MODRINTH_USER = os.getenv("MODRINTH_USER", "Gaboouu")
+CURSEFORGE_USER = os.getenv("CURSEFORGE_USER", "gaboouu")
 
-def get_json(url: str, headers: dict | None = None) -> object:
+def get_text(url: str, headers: dict | None = None) -> str:
     req = urllib.request.Request(
         url,
-        headers={
-            "User-Agent": "xGabou-downloads-badge",
-            **(headers or {}),
-        },
+        headers={"User-Agent": "downloads-badge-updater", **(headers or {})},
     )
     with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read().decode("utf-8"))
+        return r.read().decode("utf-8", errors="replace")
+
+def get_json(url: str, headers: dict | None = None) -> object:
+    return json.loads(get_text(url, headers=headers))
 
 def patch_gist(gist_id: str, token: str, content: str) -> None:
     url = f"https://api.github.com/gists/{gist_id}"
@@ -28,81 +29,46 @@ def patch_gist(gist_id: str, token: str, content: str) -> None:
             "Authorization": f"token {token}",
             "Accept": "application/vnd.github+json",
             "Content-Type": "application/json",
-            "User-Agent": "xGabou-downloads-badge",
+            "User-Agent": "downloads-badge-updater",
         },
     )
     urllib.request.urlopen(req, timeout=30).read()
 
-def get_modrinth_downloads_owner_only(username: str) -> int:
-    projects = get_json(f"https://api.modrinth.com/v2/user/{username}/projects")
+def parse_compact_number(s: str) -> int:
+    t = s.strip().replace(",", "")
+    m = re.fullmatch(r"(\d+(?:\.\d+)?)([KMB])?", t, flags=re.IGNORECASE)
+    if not m:
+        return int(float(t))
+    val = float(m.group(1))
+    suf = (m.group(2) or "").upper()
+    mult = {"": 1, "K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[suf]
+    return int(val * mult)
 
-    total = 0
-    for p in projects:
-        team_id = p.get("team")
-        if not team_id:
-            continue
+def get_modrinth_user_id(username_or_id: str) -> str:
+    user = get_json(f"https://api.modrinth.com/v2/user/{username_or_id}")
+    user_id = (user or {}).get("id")
+    if not user_id:
+        raise RuntimeError("Modrinth user id introuvable")
+    return user_id
 
-        members = get_json(f"https://api.modrinth.com/v2/team/{team_id}/members")
+def get_modrinth_downloads(username_or_id: str) -> int:
+    user_id = get_modrinth_user_id(username_or_id)
+    projects = get_json(f"https://api.modrinth.com/v2/user/{user_id}/projects")
+    return sum(int(p.get("downloads", 0)) for p in projects)
 
-        is_owner = False
-        for m in members:
-            u = (m or {}).get("user") or {}
-            if u.get("username") == username and (m.get("role") == "Owner"):
-                is_owner = True
-                break
-
-        if is_owner:
-            total += int(p.get("downloads", 0))
-
-    return total
-
-def get_curseforge_downloads(author_id: int, api_key: str) -> int:
-    # CurseForge REST API base
-    base = "https://api.curseforge.com/v1/mods/search"
-
-    # Minecraft gameId = 432
-    # classId = 6 (Mods)
-    params = {
-        "gameId": 432,
-        "classId": 6,
-        "authorId": author_id,
-        "pageSize": 50,
-        "index": 0,
-    }
-
-    headers = {"x-api-key": api_key}
-
-    total = 0
-    while True:
-        url = base + "?" + urllib.parse.urlencode(params)
-        data = get_json(url, headers=headers)
-
-        items = (data or {}).get("data") or []
-        if not items:
-            break
-
-        for mod in items:
-            total += int(mod.get("downloadCount", 0))
-
-        # Pagination
-        if len(items) < params["pageSize"]:
-            break
-        params["index"] += params["pageSize"]
-
-    return total
+def get_curseforge_total_downloads_from_profile(username: str) -> int:
+    html = get_text(f"https://www.curseforge.com/members/{username}/projects")
+    m = re.search(r"(\d+(?:\.\d+)?)\s*([KMB])?\s*Downloads", html, flags=re.IGNORECASE)
+    if not m:
+        raise RuntimeError("Impossible de trouver le total Downloads sur la page CurseForge")
+    return parse_compact_number(m.group(1) + (m.group(2) or ""))
 
 if __name__ == "__main__":
     gist_id = os.environ["GIST_ID"]
     gist_token = os.environ["GIST_TOKEN"]
 
-    # Modrinth
-    modrinth_total = get_modrinth_downloads_owner_only(USER)
-
-    # CurseForge
-    # Tu dois fournir ton authorId CurseForge et ta clé API
-    curseforge_author_id = int(os.environ["CURSEFORGE_AUTHOR_ID"])
-    curseforge_api_key = os.environ["CURSEFORGE_API_KEY"]
-    curseforge_total = get_curseforge_downloads(curseforge_author_id, curseforge_api_key)
+    modrinth_total = get_modrinth_downloads(MODRINTH_USER)
+    curseforge_total = get_curseforge_total_downloads_from_profile(CURSEFORGE_USER)
 
     badge = {
         "schemaVersion": 1,
