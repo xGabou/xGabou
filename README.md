@@ -24,5 +24,6 @@
 
 ### Total Downloads Across All Mods
 
-[![Total Downloads](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/xGabou/fc0d36937951e44bfe04cacb358c3bbf/raw/3d1eaa0e436fdf75c96c9b44f591e601e6111e61/mod-downloads-total.json)](https://gist.github.com/xGabou/fc0d36937951e44bfe04cacb358c3bbf)
+[![Total Downloads](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/xGabou/fc0d36937951e44bfe04cacb358c3bbf/raw/mod-downloads-total.json?v=2)](https://gist.github.com/xGabou/fc0d36937951e44bfe04cacb358c3bbf)
+
 
