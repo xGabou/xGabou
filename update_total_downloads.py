@@ -42,6 +42,15 @@ def parse_compact_number(s: str) -> int:
     mult = {"": 1, "K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[suf]
     return int(val * mult)
 
+def format_compact_number(n: int) -> str:
+    if n >= 1_000_000_000:
+        return f"{n / 1_000_000_000:.1f}B".rstrip("0").rstrip(".") + "B"
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}".rstrip("0").rstrip(".") + "M"
+    if n >= 1_000:
+        return f"{n / 1_000:.1f}".rstrip("0").rstrip(".") + "K"
+    return str(n)
+
 def get_modrinth_user_id(username_or_id: str) -> str:
     user = get_json(f"https://api.modrinth.com/v2/user/{username_or_id}")
     uid = (user or {}).get("id")
@@ -71,11 +80,12 @@ if __name__ == "__main__":
 
     modrinth_total = get_modrinth_downloads(MODRINTH_USER)
     curseforge_total = get_curseforge_total_downloads_from_profile(CURSEFORGE_USER)
+    total = modrinth_total + curseforge_total
 
     badge = {
         "schemaVersion": 1,
-        "label": "Downloads",
-        "message": f"CF {curseforge_total:,} | MR {modrinth_total:,}",
+        "label": "Total downloads",
+        "message": f"{format_compact_number(total)}  CF {format_compact_number(curseforge_total)}  MR {format_compact_number(modrinth_total)}",
         "color": "blue",
     }
 
