@@ -6,6 +6,7 @@ import urllib.request
 MODRINTH_USER = "Gaboouu"
 CURSEFORGE_USER = "gaboouu"
 
+
 def get_text(url: str) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": "downloads-badge-updater"})
     with urllib.request.urlopen(req, timeout=30) as r:
