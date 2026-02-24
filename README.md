@@ -31,7 +31,7 @@ A lightweight shader addon enhancing skies, clouds, and atmospheric visuals.
 [![CurseForge](https://img.shields.io/curseforge/dt/1387076?logo=curseforge)](https://www.curseforge.com/minecraft/mc-mods/atmospheric-shaders)  
 [![Modrinth](https://img.shields.io/modrinth/dt/atmospheric-shaders?logo=modrinth)](https://modrinth.com/mod/atmospheric-shaders)
 
-## Gabou’s Libs
+** Gabou’s Libs **
 
 A lightweight core library powering Gabou’s mods with shared systems, networking utilities, data synchronization, and common infrastructure.
 
